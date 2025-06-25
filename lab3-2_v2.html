@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>瀏覽器錄音 + 頻譜圖</title>
+  <style>
+    canvas { border: 1px solid #ccc; width: 100%; height: 100px; }
+  </style>
+</head>
+<body>
+  <h2>🎤 錄音並顯示頻譜圖</h2>
+  <button id="startBtn">開始錄音</button>
+  <button id="stopBtn" disabled>停止錄音</button>
+  <p id="status">尚未錄音</p>
+
+  <audio id="audio" controls></audio>
+  <a id="downloadLink" download="recording.wav" style="display:none;">下載錄音</a>
+
+  <canvas id="spectrumCanvas" width="800" height="100"></canvas>
+
+  <script>
+    let mediaRecorder, audioChunks = [];
+    let audioCtx, analyser, dataArray, sourceNode, animationId;
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const status = document.getElementById('status');
+    const audio = document.getElementById('audio');
+    const downloadLink = document.getElementById('downloadLink');
+    const canvas = document.getElementById('spectrumCanvas');
+    const canvasCtx = canvas.getContext('2d');
+
+    startBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        audio.src = url;
+        downloadLink.href = url;
+        downloadLink.style.display = 'inline';
+        status.textContent = "✅ 錄音完成，可播放與下載";
+      };
+
+      mediaRecorder.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      status.textContent = "🎙️ 錄音中...";
+    };
+
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      status.textContent = "⏹️ 停止錄音...";
+    };
+
+    function drawSpectrum() {
+      if (!analyser) return;
+
+      analyser.getByteFrequencyData(dataArray);
+      canvasCtx.fillStyle = 'black';
+      canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const barWidth = (canvas.width / dataArray.length) * 2.5;
+      let x = 0;
+
+      for (let i = 0; i < dataArray.length; i++) {
+        const barHeight = dataArray[i] / 2;
+        canvasCtx.fillStyle = `rgb(${barHeight+100},50,50)`;
+        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        x += barWidth + 1;
+      }
+
+      animationId = requestAnimationFrame(drawSpectrum);
+    }
+
+    audio.onplay = () => {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (sourceNode) sourceNode.disconnect();
+      sourceNode = audioCtx.createMediaElementSource(audio);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      const bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+
+      sourceNode.connect(analyser);
+      analyser.connect(audioCtx.destination);
+      drawSpectrum();
+    };
+
+    audio.onpause = () => {
+      cancelAnimationFrame(animationId);
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+  </script>
+</body>
+</html>

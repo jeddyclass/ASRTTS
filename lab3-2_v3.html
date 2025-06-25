@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Web Audio Spectrogram</title>
+  <style>
+    canvas { width: 800px; height: 256px; background: black; }
+  </style>
+</head>
+<body>
+  <h2>🎤 錄音並顯示 Spectrogram（頻譜熱圖）</h2>
+  <button id="startBtn">開始錄音</button>
+  <button id="stopBtn" disabled>停止錄音</button>
+  <audio id="audio" controls></audio>
+  <br><canvas id="spectrogram" width="800" height="256"></canvas>
+
+  <script>
+    let recorder, audioChunks = [];
+    let audioCtx, analyser, sourceNode;
+    const fftSize = 2048;
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const audio = document.getElementById('audio');
+    const canvas = document.getElementById('spectrogram');
+    const ctx = canvas.getContext('2d');
+
+    let drawSpectrogram, imageData, drawOffset = 0;
+
+    startBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      sourceNode = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = fftSize;
+
+      sourceNode.connect(analyser);
+
+      const freqBins = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(freqBins);
+
+      imageData = ctx.createImageData(canvas.width, canvas.height);
+
+      function draw() {
+        analyser.getByteFrequencyData(dataArray);
+
+        // shift image left by 1 pixel
+        const newImage = ctx.getImageData(1, 0, canvas.width - 1, canvas.height);
+        ctx.putImageData(newImage, 0, 0);
+
+        // draw new column at right
+        for (let y = 0; y < canvas.height; y++) {
+          const index = Math.floor(y * freqBins / canvas.height);
+          const value = dataArray[index];
+          const color = getColor(value);
+
+          ctx.fillStyle = color;
+          ctx.fillRect(canvas.width - 1, canvas.height - y, 1, 1);
+        }
+
+        drawSpectrogram = requestAnimationFrame(draw);
+      }
+      draw();
+
+      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      recorder.onstop = () => {
+        cancelAnimationFrame(drawSpectrogram);
+        const blob = new Blob(audioChunks, { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        audio.src = url;
+      };
+
+      recorder.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    stopBtn.onclick = () => {
+      recorder.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+
+    function getColor(v) {
+      // value: 0 (black) to 255 (yellowish)
+      const r = v;
+      const g = v / 2;
+      const b = 255 - v;
+      return `rgb(${r},${g},${b})`;
+    }
+  </script>
+</body>
+</html>

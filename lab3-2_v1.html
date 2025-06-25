@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>瀏覽器錄音儲存 WAV</title>
+</head>
+<body>
+  <h2>🎤 錄音範例（儲存為 WAV）</h2>
+  <button id="startBtn">開始錄音</button>
+  <button id="stopBtn" disabled>停止錄音</button>
+  <p id="status">尚未開始錄音</p>
+  <audio id="audio" controls></audio>
+  <a id="downloadLink" style="display:none" download="recording.wav">下載錄音</a>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const status = document.getElementById('status');
+    const audio = document.getElementById('audio');
+    const downloadLink = document.getElementById('downloadLink');
+
+    startBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        audio.src = url;
+        downloadLink.href = url;
+        downloadLink.style.display = 'inline';
+        status.textContent = "✅ 錄音完成，可播放與下載";
+      };
+
+      mediaRecorder.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      status.textContent = "🎙️ 錄音中...";
+    };
+
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      status.textContent = "⏹️ 停止錄音，正在處理...";
+    };
+  </script>
+</body>
+</html>
