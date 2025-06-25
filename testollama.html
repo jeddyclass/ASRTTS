@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ollama Chat Test</title>
+</head>
+<body>
+  <h2>Ollama Chat (via ngrok)</h2>
+  <input type="text" id="prompt" placeholder="Enter your prompt..." style="width: 300px;">
+  <button onclick="sendPrompt()">Send</button>
+  <pre id="response" style="white-space: pre-wrap;"></pre>
+
+  <script>
+    async function sendPrompt() {
+      const prompt = document.getElementById("prompt").value;
+      const resEl = document.getElementById("response");
+      resEl.textContent = "Sending...";
+      const response = await fetch('https://<YOUR_NGROK_URL>/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({prompt})
+      });
+      const data = await response.json();
+      resEl.textContent = data.response || data.error;
+    }
+  </script>
+</body>
+</html>
