@@ -1,0 +1,1 @@
+https://c2a1-34-16-223-127.ngrok-free.app/tts?text=擁有玻璃的光學品質和流動性，只有蘋果才能實現。它會根據你的內容，甚至文本進行轉換，並使瀏覽和控制更加清晰。&text_lang=zh&ref_audio_path=badXT_71.wav&prompt_lang=zh&prompt_text=坏女人唱记录超过三十分钟，那是因为以前看到小新就烦了，根本不想跟小新见面。但是我不知道为什么，我对你们有一种特别的感觉。&text_split_method=cut5&batch_size=1&media_type=wav&streaming_mode=true
